@@ -104,18 +104,19 @@ class StateEstimator:
 
     def get_command(self):
 
-        # cmd_x = 0.6 * self.left_stick[1]
-        # cmd_y = -0.5 * self.left_stick[0]
+        cmd_x = 0.6 * self.left_stick[1]
+        cmd_y = -0.5 * self.left_stick[0]
 
-        # cmd_yaw = -0.8 * self.right_stick[0]
-        # cmd_height = 0.74 - 0.54 * self.right_stick[1]
+        cmd_yaw = -0.8 * self.right_stick[0]
+        cmd_height = 0.74 - 0.54 * self.right_stick[1]
 
-        # # if np.abs(cmd_x) < 0.1 and np.abs(cmd_y) < 0.1 and np.abs(cmd_yaw) < 0.1:
-        # #     return np.array([0.0, 0.0, 0.0, 0.68])
+        # if np.abs(cmd_x) < 0.1 and np.abs(cmd_y) < 0.1 and np.abs(cmd_yaw) < 0.1:
+        #     return np.array([0.0, 0.0, 0.0, 0.68])
 
 
+        print(f"Command from RC: vx {cmd_x:.2f}, vy {cmd_y:.2f}, vyaw {cmd_yaw:.2f}, height {cmd_height:.2f}")
         return self.command
-        # return np.array([cmd_x, cmd_y, cmd_yaw, cmd_height])
+        return np.array([cmd_x, cmd_y, cmd_yaw, cmd_height])
 
     def get_buttons(self):
         return self.right_lower_right_switch
@@ -166,10 +167,14 @@ class StateEstimator:
 
         msg = rc_command_lcmt.decode(data)
 
+        #print(msg)
+
         self.right_lower_right_switch_pressed = ((msg.right_lower_right_switch and not self.right_lower_right_switch) or self.right_lower_right_switch_pressed)
 
         self.right_stick = msg.right_stick
+        #print("right stick:", self.right_stick)
         self.left_stick = msg.left_stick
+        #print("left stick:", self.left_stick)
         self.right_lower_right_switch = msg.right_lower_right_switch
 
     def _pedal_command_cb(self, channel, data):

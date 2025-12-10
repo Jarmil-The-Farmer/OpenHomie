@@ -63,11 +63,11 @@ class LCMAgent():
         self.body_angular_vel = self.se.get_body_angular_vel()
         actions =  torch.cat((self.actions.reshape(1, -1).to("cuda:0"), torch.zeros(1, 15).to("cuda:0")), dim=-1).to("cuda:0")
         print("commands: ", self.commands[:, :])
-        print("ang_vel: ", self.body_angular_vel)
-        print("grav: ", self.gravity_vector)
-        print("dof_pos: ", self.dof_pos)
-        print("dof_vel: ", self.dof_vel)
-        print("action: ", actions)
+        # print("ang_vel: ", self.body_angular_vel)
+        # print("grav: ", self.gravity_vector)
+        # print("dof_pos: ", self.dof_pos)
+        # print("dof_vel: ", self.dof_vel)
+        # print("action: ", actions)
         ob = np.concatenate((self.commands[:, :] * np.array([2.0, 2.0, 0.25, 1.0]), # 4
                              self.body_angular_vel.reshape(1, -1) * 0.5, # 3
                              self.gravity_vector.reshape(1, -1), # 3
