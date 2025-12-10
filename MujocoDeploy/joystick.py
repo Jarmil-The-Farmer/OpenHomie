@@ -48,12 +48,15 @@ class JoystickController:
         # Poznámka: Na Linuxu může být Y osa invertovaná (nahoru je -1), proto dáváme minus.
         raw_x = self.joystick.get_axis(1) * -1  # Dopředu/Dozadu (Osa X robota)
         raw_y = self.joystick.get_axis(0) * -1  # Vlevo/Vpravo (Osa Y robota)
+        raw_z = self.joystick.get_axis(3) * -1
         
         vx = self._apply_deadzone(raw_x) * self.max_velocity
         vy = self._apply_deadzone(raw_y) * self.max_velocity
+        vz = self._apply_deadzone(raw_z) * self.max_velocity
+
         
         # Sestavení 3D vektoru (Z složka je 0, protože páčka je 2D)
-        velocity_vector = np.array([vx, vy, 0.0], dtype=np.float32)
+        velocity_vector = np.array([vx, vy, vz], dtype=np.float32)
 
         # --- PRAVÁ PÁČKA (Výška) ---
         # Axis 4 je obvykle vertikální osa pravé páčky na Xbox ovladačích (na PS4 to může být Axis 3)

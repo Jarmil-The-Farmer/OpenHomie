@@ -13,6 +13,8 @@ from joystick import JoystickController
 
 controller = JoystickController(max_velocity=1.0)
 
+TRACK_CAMERA = True
+
 def load_onnx_policy(path):
     model = ort.InferenceSession(path)
     def run_inference(input_tensor):
@@ -138,9 +140,15 @@ def main():
     policy = load_onnx_policy(config['policy_path'])
     
     counter = 0
+
+    robot_body_id = m.body('pelvis').id
     
     with mujoco.viewer.launch_passive(m, d) as viewer:
         start = time.time()
+        viewer.cam.distance = 3.5
+        viewer.cam.azimuth = 180
+        viewer.cam.elevation = -20  
+
         while viewer.is_running() and time.time() - start < config['simulation_duration']:
             step_start = time.time()
             
@@ -202,6 +210,18 @@ def main():
                 # Transform action to target_dof_pos
                 target_dof_pos = action * config['action_scale'] + config['default_angles']
             
+                # BEFORE viewer.sync()
+                # get robot position
+                if TRACK_CAMERA:
+                    robot_pos = d.xpos[robot_body_id].copy()
+
+                    # follow robot
+                    viewer.cam.lookat[:] = robot_pos
+                    #viewer.cam.distance = 3.5     # jak daleko má kamera být
+                    #viewer.cam.azimuth = 180      # natočení vlevo/vpravo
+                    #viewer.cam.elevation = -20    # úhel shora
+
+
                 # Sync viewer
                 viewer.sync()
             
