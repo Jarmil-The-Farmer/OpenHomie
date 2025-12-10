@@ -7,6 +7,19 @@ import numpy as np
 import mujoco
 import mujoco.viewer
 from legged_gym import LEGGED_GYM_ROOT_DIR
+import onnxruntime as ort
+
+from joystick import JoystickController
+
+controller = JoystickController(max_velocity=1.0)
+
+def load_onnx_policy(path):
+    model = ort.InferenceSession(path)
+    def run_inference(input_tensor):
+        ort_inputs = {model.get_inputs()[0].name: input_tensor.cpu().numpy()}
+        ort_outs = model.run(None, ort_inputs)
+        return torch.tensor(ort_outs[0], device="cuda:0")
+    return run_inference
 
 def load_config(config_path):
     """Load and process the YAML configuration file"""
@@ -121,7 +134,8 @@ def main():
     obs = np.zeros(config['num_obs'], dtype=np.float32)
     
     # Load policy
-    policy = torch.jit.load(config['policy_path'])
+    #policy = torch.jit.load(config['policy_path'])
+    policy = load_onnx_policy(config['policy_path'])
     
     counter = 0
     
@@ -165,6 +179,12 @@ def main():
             
             counter += 1
             if counter % config['control_decimation'] == 0:
+
+                vel, h = controller.get_command()
+                cmd = vel
+                height_cmd = h
+
+                print(cmd, height_cmd)
                 # Update observation
                 single_obs, _ = compute_observation(d, config, action, cmd, height_cmd, n_joints)
                 obs_history.append(single_obs)
@@ -177,18 +197,19 @@ def main():
                 
                 # Policy inference
                 obs_tensor = torch.from_numpy(obs).unsqueeze(0)
-                action = policy(obs_tensor).detach().numpy().squeeze()
+                action = policy(obs_tensor).detach().cpu().numpy().squeeze()
                 
                 # Transform action to target_dof_pos
                 target_dof_pos = action * config['action_scale'] + config['default_angles']
             
-            # Sync viewer
-            viewer.sync()
+                # Sync viewer
+                viewer.sync()
             
             # Time keeping
-            time_until_next_step = m.opt.timestep - (time.time() - step_start)
-            if time_until_next_step > 0:
-                time.sleep(time_until_next_step)
+            expected_time = start + (counter * config['simulation_dt'])
+            current_time = time.time()
+            if current_time < expected_time:
+                time.sleep(expected_time - current_time)
 
 if __name__ == "__main__":
     main()
