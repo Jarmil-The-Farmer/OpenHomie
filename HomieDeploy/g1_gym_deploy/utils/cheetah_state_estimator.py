@@ -103,6 +103,7 @@ class StateEstimator:
         return self.euler
 
     def get_command(self):
+        #return self.command
 
         cmd_x = 0.6 * self.left_stick[1]
         cmd_y = -0.5 * self.left_stick[0]
@@ -110,12 +111,14 @@ class StateEstimator:
         cmd_yaw = -0.8 * self.right_stick[0]
         cmd_height = 0.74 - 0.54 * self.right_stick[1]
 
-        # if np.abs(cmd_x) < 0.1 and np.abs(cmd_y) < 0.1 and np.abs(cmd_yaw) < 0.1:
-        #     return np.array([0.0, 0.0, 0.0, 0.68])
-
+        if np.abs(cmd_x) < 0.1:
+            cmd_x = 0.0
+        if np.abs(cmd_y) < 0.1:
+            cmd_y = 0.0
+        if np.abs(cmd_yaw) < 0.1:
+            cmd_yaw = 0.0
 
         print(f"Command from RC: vx {cmd_x:.2f}, vy {cmd_y:.2f}, vyaw {cmd_yaw:.2f}, height {cmd_height:.2f}")
-        return self.command
         return np.array([cmd_x, cmd_y, cmd_yaw, cmd_height])
 
     def get_buttons(self):
