@@ -14,6 +14,11 @@ from joystick import JoystickController
 controller = JoystickController(max_velocity=1.0)
 
 TRACK_CAMERA = True
+MOVE_ARM_JOINTS = False
+# ARM SMOOTH RANDOM STATE
+ARM_UPDATE_STEPS = 1000   # jak často se generuje nové random gesto
+SMOOTH_FACTOR = 0.0025      # jak rychle se blíží k cíli (0.01–0.05 je hezké)
+VELOCITY_OFFSET = np.array([0.1, 0.0, 0.0])
 
 def load_onnx_policy(path):
     model = ort.InferenceSession(path)
@@ -142,6 +147,7 @@ def main():
     counter = 0
 
     robot_body_id = m.body('pelvis').id
+    fallen_start_time = None
     
     with mujoco.viewer.launch_passive(m, d) as viewer:
         start = time.time()
@@ -149,9 +155,33 @@ def main():
         viewer.cam.azimuth = 180
         viewer.cam.elevation = -20  
 
-        while viewer.is_running() and time.time() - start < config['simulation_duration']:
-            step_start = time.time()
-            
+        current_arm_target = None
+
+        while viewer.is_running():
+            # --- FALL DETECTION ---
+            pelvis_height = d.xpos[robot_body_id][2]  # Z = výška nad zemí
+            FALL_THRESHOLD = 0.2                      # když je pelvis níž, robot spadl
+
+            if pelvis_height < FALL_THRESHOLD:
+                if fallen_start_time is None:
+                    fallen_start_time = time.time()
+                else:
+                    if time.time() - fallen_start_time > 1.0:
+                        print("Robot fallen! Resetting simulation...")
+                        
+                        mujoco.mj_resetData(m, d)
+                        mujoco.mj_forward(m, d)
+
+                        print("Simulation reset complete.")
+                        
+                        fallen_start_time = None
+                        #start = time.time()   # reset časovače simulace
+                        continue
+            else:
+                # robot stojí → reset odpočítávání
+                fallen_start_time = None
+            # ------------------------
+
             # Control leg joints with policy
             leg_tau = pd_control(
                 target_dof_pos,
@@ -168,10 +198,24 @@ def main():
             if n_joints > config['num_actions']:
                 arm_kp = 100.0
                 arm_kd = 0.5
-                arm_target_positions = np.zeros(n_joints - config['num_actions'], dtype=np.float32)
-                
+
+                hand_dofs = n_joints - config['num_actions']
+
+                # Inicializace targetů při startu
+                if current_arm_target is None:
+                    current_arm_target = np.zeros(hand_dofs, dtype=np.float32)
+                    next_arm_target = np.zeros(hand_dofs, dtype=np.float32)
+
+                # GENERATE NEW RANDOM TARGET EVERY X STEPS
+                if MOVE_ARM_JOINTS and counter % ARM_UPDATE_STEPS == 0:
+                    noise_scale = 0.7
+                    next_arm_target = np.random.uniform(-noise_scale, noise_scale, hand_dofs)
+
+                # SMOOTH INTERPOLATION (LERP)
+                current_arm_target = current_arm_target + SMOOTH_FACTOR * (next_arm_target - current_arm_target)
+
                 arm_tau = pd_control(
-                    arm_target_positions,
+                    current_arm_target,
                     d.qpos[7+config['num_actions']:7+n_joints],
                     np.ones(n_joints-config['num_actions']) * arm_kp,
                     np.zeros(n_joints-config['num_actions']),
@@ -189,10 +233,10 @@ def main():
             if counter % config['control_decimation'] == 0:
 
                 vel, h = controller.get_command()
-                cmd = vel
+                cmd = vel + VELOCITY_OFFSET
                 height_cmd = h
 
-                print(cmd, height_cmd)
+                print("Velocity cmd:", cmd, "Height cmd:", height_cmd)
                 # Update observation
                 single_obs, _ = compute_observation(d, config, action, cmd, height_cmd, n_joints)
                 obs_history.append(single_obs)
