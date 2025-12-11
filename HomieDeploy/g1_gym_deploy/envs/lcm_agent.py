@@ -1,3 +1,4 @@
+import math
 import time
 
 import lcm
@@ -16,6 +17,9 @@ class LCMAgent():
         self.se = se
         self.command_profile = command_profile
 
+        self.time_ = 0.0
+        self.duration_ = 3.0
+
         self.dt = 1/50
         self.timestep = 0
 
@@ -29,8 +33,8 @@ class LCMAgent():
 
         self.default_dof_pos = np.array([-0.1000,  0.0000,  0.0000,  0.3000, -0.2000,  0.0000, -0.1000,  0.0000,
          0.0000,  0.3000, -0.2000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
-         0.0000,  0.0000,  0.0000,  0.0000,  0.0000, -0.0000,  0.0000,  0.0000,
-         0.0000,  0.0000,  0.0000], dtype=np.float)
+         0.0000,  0.0010,  0.0009,  0.0008,  0.0007, -0.0006,  0.0005,  0.0004,
+         0.0003,  0.0002,  0.0001], dtype=np.float)
         self.p_gains = np.array([150., 150., 150., 300.,  40.,  40., 150., 150., 150., 300.,  40.,  40., 300., 200., 200., 200., 100.,  20.,  20.,  20., 200., 200., 200., 100., 20.,  20.,  20.], dtype=np.float)
         self.d_gains = np.array([2.0000, 2.0000, 2.0000, 4.0000, 4.0000, 4.0000, 2.0000, 2.0000, 2.0000, 4.0000, 4.0000, 4.0000, 5.0000, 4.0000, 4.0000, 4.0000, 1.0000, 0.5000,0.5000, 0.5000, 4.0000, 4.0000, 4.0000, 1.0000, 0.5000, 0.5000, 0.5000], dtype=np.float)
 
@@ -65,9 +69,9 @@ class LCMAgent():
         print("commands: ", self.commands[:, :])
         # print("ang_vel: ", self.body_angular_vel)
         # print("grav: ", self.gravity_vector)
-        # print("dof_pos: ", self.dof_pos)
+        #print("dof_pos: ", self.dof_pos)
         # print("dof_vel: ", self.dof_vel)
-        # print("action: ", actions)
+        #print("action: ", actions)
         ob = np.concatenate((self.commands[:, :] * np.array([2.0, 2.0, 0.25, 1.0]), # 4
                              self.body_angular_vel.reshape(1, -1) * 0.5, # 3
                              self.gravity_vector.reshape(1, -1), # 3
@@ -80,11 +84,12 @@ class LCMAgent():
     def publish_action(self, action, hard_reset=False):
         action = action.cpu().numpy()
         command_for_robot = pd_tau_targets_lcmt()
+        # actions + default arms position
         scaled_pos_target = action * 0.25 + self.default_dof_pos[:12]
         # torques = (scaled_pos_target - self.dof_pos[:12]) * self.p_gains[:12]  - self.dof_vel[:12] * self.d_gains[:12]   
         # torques = np.clip(torques[:12], -self.torque_limit[:12], self.torque_limit[:12])
         self.joint_pos_target[:12] = scaled_pos_target[:12]
-        # arm_actions = self.se.get_arm_action()
+        arm_actions = self.se.get_arm_action()
         # self.joint_pos_target[15:] = 0.#arm_actions
         # self.joint_pos_target[12] = scaled_pos_target[12] # waist
         # self.joint_pos_target[15:] = scaled_pos_target[13:]
@@ -96,11 +101,32 @@ class LCMAgent():
         command_for_robot.tau_ff = self.torques
         command_for_robot.timestamp_us = int(time.time() * 10 ** 6)
 
+        print("Publishing command: ", command_for_robot.q_des)
+
         lc.publish("pd_plustau_targets", command_for_robot.encode())
 
-        # arm_action = arm_action_lcmt()
-        # arm_action.act = arm_actions
-        # lc.publish("new_arm_action", arm_action.encode())
+
+        self.time_ += 0.002
+
+        if self.time_ < self.duration_:
+            ratio = ratio = np.clip(self.time_ / self.duration_, 0.0, 1.0)
+            L_shoulder_pitch = ratio * 1.0
+        else:
+            t = self.time_ - self.duration_
+
+            max_shoulder = np.pi * 20.0 / 180.0
+
+            L_shoulder_pitch = max_shoulder * math.sin(2.0 * math.pi * t)
+
+        print("L_shoulder_pitch: ", L_shoulder_pitch)
+        
+        arm_actions[0] = L_shoulder_pitch
+
+
+        arm_action = arm_action_lcmt()
+        arm_action.act = arm_actions
+        print("Publishing arm action: ", arm_action.act)
+        lc.publish("arm_action", arm_action.encode())
 
     def reset(self):
         self.actions = torch.zeros(12)
