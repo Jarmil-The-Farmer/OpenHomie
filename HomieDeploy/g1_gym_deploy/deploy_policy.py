@@ -7,6 +7,7 @@ from utils.deployment_runner import DeploymentRunner
 from envs.lcm_agent import LCMAgent
 from utils.cheetah_state_estimator import StateEstimator
 from utils.command_profile import *
+from utils.velocity_receiver import VelocityReceiver
 import onnxruntime as ort
 
 import pathlib
@@ -16,11 +17,15 @@ import os
 
 lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=255")
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 def load_and_run_policy():
     # load trained policy
     ckpt_path = "/home/unitree/OpenHomie/HomieDeploy/deploy.onnx"
 
-    se = StateEstimator(lc)
+    receiver = VelocityReceiver()
+    se = StateEstimator(lc, receiver)
 
     control_dt = 1/50
     command_profile = RCControllerProfile(dt=control_dt, state_estimator=se)

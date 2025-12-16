@@ -47,9 +47,12 @@ def get_rotation_matrix_from_rpy(rpy):
     rot = np.dot(R_z, np.dot(R_y, R_x))
     return rot
 
+from .velocity_receiver import VelocityReceiver
 
 class StateEstimator:
-    def __init__(self, lc):
+    def __init__(self, lc, velocity_receiver: VelocityReceiver):
+
+        self.velocity_receiver = velocity_receiver
 
         # reverse legs, from cpp order to isaacgym order
         self.joint_idxs = [0,1,2,3,4,5,6,7,8,9,10,11,12,15,16,17,18,19,20,21,22,23,24,25,26,27,28]
@@ -104,6 +107,11 @@ class StateEstimator:
 
     def get_command(self):
         #return self.command
+
+        vel = self.velocity_receiver.get_velocity()
+        if vel is None:
+            vel = (0.0, 0.0, 0.0)
+        return np.array([vel[0], vel[1], vel[2], 0.74])
 
         cmd_x = 0.6 * self.left_stick[1]
         cmd_y = -0.5 * self.left_stick[0]
