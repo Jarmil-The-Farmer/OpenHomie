@@ -118,15 +118,15 @@ class LCMAgent():
 
             L_shoulder_pitch = max_shoulder * math.sin(2.0 * math.pi * t)
 
-        print("L_shoulder_pitch: ", L_shoulder_pitch)
+        #print("L_shoulder_pitch: ", L_shoulder_pitch)
         
         arm_actions[0] = L_shoulder_pitch
 
 
         arm_action = arm_action_lcmt()
         arm_action.act = arm_actions
-        print("Publishing arm action: ", arm_action.act)
-        lc.publish("arm_action", arm_action.encode())
+        #print("Publishing arm action: ", arm_action.act)
+        #lc.publish("arm_action", arm_action.encode())
 
     def reset(self):
         self.actions = torch.zeros(12)
