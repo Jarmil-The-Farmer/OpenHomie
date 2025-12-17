@@ -124,8 +124,8 @@ class StateEstimator:
         if cmd_x == 0.0 and cmd_y == 0.0 and cmd_yaw == 0.0:
             vel = self.velocity_receiver.get_velocity()
             if vel is None:
-                vel = (0.0, 0.0, 0.0)
-            return np.array([vel[0], vel[1], vel[2], 0.74])
+                vel = (0.0, 0.0, 0.0, 0.74)
+            return np.array([vel[0], vel[1], vel[2], vel[3]])
         else:
             print(f"Command from RC: vx {cmd_x:.2f}, vy {cmd_y:.2f}, vyaw {cmd_yaw:.2f}, height {cmd_height:.2f}")
             return np.array([cmd_x, cmd_y, cmd_yaw, cmd_height])
