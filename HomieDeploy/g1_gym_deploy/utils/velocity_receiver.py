@@ -107,8 +107,8 @@ class VelocityReceiver:
                     logger.debug("Received velocity from %s: %s", addr, obj["velocity"])
                     with self._lock:
                         vel = obj["velocity"]
-                        if isinstance(vel, list) and len(vel) == 3:
-                            self._last_velocity = (float(vel[0]), float(vel[1]), float(vel[2]))
+                        if isinstance(vel, list) and len(vel) == 4:
+                            self._last_velocity = (float(vel[0]), float(vel[1]), float(vel[2]), float(vel[3]))
                             self._last_received_time = time.time()
                         else:
                             logger.warning("Invalid velocity format from %s: %s", addr, vel)
