@@ -108,11 +108,6 @@ class StateEstimator:
     def get_command(self):
         #return self.command
 
-        vel = self.velocity_receiver.get_velocity()
-        if vel is None:
-            vel = (0.0, 0.0, 0.0)
-        return np.array([vel[0], vel[1], vel[2], 0.74])
-
         cmd_x = 0.6 * self.left_stick[1]
         cmd_y = -0.5 * self.left_stick[0]
 
@@ -126,8 +121,14 @@ class StateEstimator:
         if np.abs(cmd_yaw) < 0.1:
             cmd_yaw = 0.0
 
-        print(f"Command from RC: vx {cmd_x:.2f}, vy {cmd_y:.2f}, vyaw {cmd_yaw:.2f}, height {cmd_height:.2f}")
-        return np.array([cmd_x, cmd_y, cmd_yaw, cmd_height])
+        if cmd_x == 0.0 and cmd_y == 0.0 and cmd_yaw == 0.0:
+            vel = self.velocity_receiver.get_velocity()
+            if vel is None:
+                vel = (0.0, 0.0, 0.0)
+            return np.array([vel[0], vel[1], vel[2], 0.74])
+        else:
+            print(f"Command from RC: vx {cmd_x:.2f}, vy {cmd_y:.2f}, vyaw {cmd_yaw:.2f}, height {cmd_height:.2f}")
+            return np.array([cmd_x, cmd_y, cmd_yaw, cmd_height])
 
     def get_buttons(self):
         return self.right_lower_right_switch
